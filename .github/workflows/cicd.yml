@@ -1,0 +1,38 @@
+name: Deploy Node Application
+
+on: 
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+      - name: Login to docker hub
+        run: docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASS }}     
+      - name: Build Docker Image
+        run: docker build -t deepsalunkhee/hb-aws-s  .
+      - name: Publish Image to docker hub
+        run: docker push deepsalunkhee/hb-aws-s:latest 
+ 
+  deploy:
+    needs: build
+    runs-on: self-hosted 
+    steps:
+      - name: Pull image from docker hub
+        run: docker pull deepsalunkhee/hb-aws-s:latest 
+      - name: Delete old container
+        run: docker rm -f nodejs-app-container  
+      - name: Run Docker Container
+        run: docker run -d -p 5000:5000 --name nodejs-app-container \
+             -e MONGOKEY='${{ secrets.MONGOKEY }}' \
+             -e JWT_SECRET='${{ secrets.JWT_SECRET }}' \
+             -e SALT_ROUNDS='${{ secrets.SALT_ROUNDS }}' \
+             -e EMAIL_USER='${{ secrets.EMAIL_USER }}' \
+             -e EMAIL_PASS='${{ secrets.EMAIL_PASS }}' \
+             deepsalunkhee/hb-aws-s
+ 
+ 
